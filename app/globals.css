@@ -1,26 +1,204 @@
 @import "tailwindcss";
 
+/* ========================================
+   BILL.COM DESIGN SYSTEM - Tailwind v4
+   ======================================== */
+
+/* --- CSS Custom Properties (Design Tokens) --- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary - BILL Green */
+  --bill-green: #00A859;
+  --bill-green-dark: #008A47;
+  --bill-green-light: #E6F7EF;
+  --bill-green-50: #F0FDF6;
+  --bill-green-100: #DCFCE9;
+  --bill-green-600: #00A859;
+  --bill-green-700: #008A47;
+
+  /* Backgrounds */
+  --bg-main: #F8F9FB;
+  --bg-sidebar: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F3F4F6;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-on-primary: #FFFFFF;
+
+  /* Borders */
+  --border-default: #E5E7EB;
+  --border-light: #F3F4F6;
+
+  /* Status Colors */
+  --status-paid: #00A859;
+  --status-paid-bg: #F0FDF6;
+  --status-pending: #F59E0B;
+  --status-pending-bg: #FFFBEB;
+  --status-overdue: #EF4444;
+  --status-overdue-bg: #FEF2F2;
+  --status-draft: #6B7280;
+  --status-draft-bg: #F9FAFB;
+  --status-approved: #3B82F6;
+  --status-approved-bg: #EFF6FF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Transition */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Sidebar */
+  --sidebar-width-expanded: 260px;
+  --sidebar-width-collapsed: 72px;
 }
 
+/* --- Tailwind v4 Theme Extension --- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* Map CSS variables thành Tailwind tokens */
+  --color-bill-green: var(--bill-green);
+  --color-bill-green-dark: var(--bill-green-dark);
+  --color-bill-green-light: var(--bill-green-light);
+  --color-bill-green-50: var(--bill-green-50);
+
+  --color-bg-main: var(--bg-main);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-card: var(--bg-card);
+  --color-bg-hover: var(--bg-hover);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-border-default: var(--border-default);
+  --color-border-light: var(--border-light);
+
+  --color-status-paid: var(--status-paid);
+  --color-status-paid-bg: var(--status-paid-bg);
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-overdue-bg: var(--status-overdue-bg);
+  --color-status-draft: var(--status-draft);
+  --color-status-draft-bg: var(--status-draft-bg);
+  --color-status-approved: var(--status-approved);
+  --color-status-approved-bg: var(--status-approved-bg);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* --- Base Styles --- */
+*,
+*::before,
+*::after {
+  border-color: var(--border-default);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* --- Focus ring utility --- */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--bill-green);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Skeleton animation --- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* --- KPI card counter animation --- */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-count-up {
+  animation: countUp 0.5s ease-out forwards;
+}
+
+/* --- Fade in animation --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* --- Stagger animation cho table rows --- */
+.stagger-row {
+  animation: fadeIn 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+/* --- Tooltip --- */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--text-primary);
+  color: white;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
 }
