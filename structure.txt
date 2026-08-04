@@ -1,0 +1,26 @@
+src/
+├── app/
+│   ├── (dashboard)/
+│   │   ├── inbox/
+│   │   │   ├── [id]/
+│   │   │   │   └── page.tsx      # Split-Screen Coding Workspace
+│   │   │   └── page.tsx          # Inbox queue list
+│   │   └── vendors/
+│   │       ├── [id]/
+│   │       │   └── page.tsx      # Detail vendor & unpaid/paid bills
+│   │       └── page.tsx          # List of vendors
+│   ├── api/                      # Server Actions / API Routes (AI OCR)
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── ui/                       # Reusable buttons, inputs, cards
+│   ├── inbox/                    # Image viewer, OCR forms
+│   └── vendors/                  # Vendor tables, bill list items
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts             # Client-side Supabase client
+│   │   └── server.ts             # Server-side Supabase client
+│   └── ai/
+│       └── gemini.ts             # Google GenAI helper functions
+└── types/
+    └── database.types.ts         # TypeScript types matching Supabase schema
