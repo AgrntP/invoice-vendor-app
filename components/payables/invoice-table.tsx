@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   useTable,
   flexRender,
@@ -18,8 +19,8 @@ import {
   type ColumnFiltersState,
   type RowSelectionState,
 } from "@tanstack/react-table";
-import { Invoice } from "@/types/invoice";
-import { columns } from "./columns";
+import { createColumns } from "./columns";
+import { useInvoices } from "@/lib/invoice-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,61 +50,56 @@ const features = tableFeatures({
 });
 
 interface InvoiceTableProps {
-  data: Invoice[];
   statusFilter: string;
   searchQuery: string;
 }
 
 /**
- * InvoiceTable component - Bảng dữ liệu hóa đơn
- *
- * Sử dụng TanStack Table v9 API:
- * - useTable thay vì useReactTable
- * - stockFeatures + createXxxRowModel factories
- * - table.state thay vì table.getState()
- *
- * Tính năng:
- * - Sorting (click header để sắp xếp)
- * - Pagination (phân trang) với rows per page selector
- * - Row selection (checkbox) + bulk action bar
- * - Client-side filtering (status + search)
- * - Striped rows + hover highlight
+ * InvoiceTable — Bảng dữ liệu hóa đơn
+ * Lấy data từ InvoiceContext (shared state toàn dashboard)
  */
-export function InvoiceTable({
-  data,
-  statusFilter,
-  searchQuery,
-}: InvoiceTableProps) {
+export function InvoiceTable({ statusFilter, searchQuery }: InvoiceTableProps) {
+  const router = useRouter();
+  const { invoices, deleteInvoice } = useInvoices();
+
+  // Column definitions với handlers edit/delete
+  const columns = useMemo(
+    () =>
+      createColumns({
+        onEdit: (id) => router.push(`/payables/${id}/edit`),
+        onDelete: deleteInvoice,
+      }),
+    [router, deleteInvoice]
+  );
+
   // === Table States ===
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // === Filter data trước khi đưa vào table ===
-  const filteredData = data.filter((invoice) => {
-    // Status filter
-    if (statusFilter !== "all" && invoice.status !== statusFilter) {
-      return false;
-    }
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        invoice.vendorName.toLowerCase().includes(query) ||
-        invoice.invoiceNumber.toLowerCase().includes(query) ||
-        invoice.description?.toLowerCase().includes(query)
-      );
-    }
-
-    return true;
-  });
+  // === Filter data từ context ===
+  const filteredData = useMemo(
+    () =>
+      invoices.filter((invoice) => {
+        if (statusFilter !== "all" && invoice.status !== statusFilter) return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          return (
+            invoice.vendorName.toLowerCase().includes(q) ||
+            invoice.invoiceNumber.toLowerCase().includes(q) ||
+            invoice.description?.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [invoices, statusFilter, searchQuery]
+  );
 
   // === TanStack Table v9 instance ===
   const table = useTable({
     features,
     data: filteredData,
-    columns,
+    columns: columns as typeof columns,
     state: {
       sorting,
       columnFilters,
