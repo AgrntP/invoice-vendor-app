@@ -25,6 +25,7 @@ interface PdfImportZoneProps {
 export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "extracting" | "done" | "error">("idle");
   const [extracted, setExtracted] = useState<ExtractedInvoiceData | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -56,6 +57,14 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
       return;
     }
     setFile(f);
+
+    if (isImage) {
+      const url = URL.createObjectURL(f);
+      setFilePreviewUrl(url);
+    } else {
+      setFilePreviewUrl(null);
+    }
+
     setStatus("idle");
     setExtracted(null);
     setErrorMessage("");
@@ -97,7 +106,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
       }
 
       // Đọc file thành dataURL và raw base64
-      const { base64, dataUrl } = await new Promise<{ base64: string; dataUrl: string }>((resolve, reject) => {
+      const { base64 } = await new Promise<{ base64: string; dataUrl: string }>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
@@ -127,6 +136,8 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
 
       setExtracted(json.data);
       setStatus("done");
+      // Tự động cập nhật ngay lập tức sang form bên cạnh
+      onDataExtracted(json.data);
     } catch {
       setErrorMessage("Lỗi kết nối. Vui lòng thử lại.");
       setStatus("error");
@@ -139,6 +150,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
 
   const handleRemoveFile = () => {
     setFile(null);
+    setFilePreviewUrl(null);
     setStatus("idle");
     setExtracted(null);
     setErrorMessage("");

@@ -21,6 +21,7 @@ import {
 } from "@tanstack/react-table";
 import { createColumns } from "./columns";
 import { useInvoices } from "@/lib/invoice-store";
+import { type Invoice } from "@/types/invoice";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,12 +63,13 @@ export function InvoiceTable({ statusFilter, searchQuery }: InvoiceTableProps) {
   const router = useRouter();
   const { invoices, deleteInvoice } = useInvoices();
 
-  // Column definitions với handlers edit/delete
+  // Column definitions với handlers edit/delete/pay
   const columns = useMemo(
     () =>
       createColumns({
         onEdit: (id) => router.push(`/payables/${id}/edit`),
         onDelete: deleteInvoice,
+        onPay: (id) => router.push(`/payables/checkout?ids=${id}`),
       }),
     [router, deleteInvoice]
   );
@@ -354,6 +356,42 @@ export function InvoiceTable({ statusFilter, searchQuery }: InvoiceTableProps) {
           </div>
         </div>
       </div>
+
+      {/* Floating Bulk Action Bar (Hiển thị khi chọn ít nhất 1 hóa đơn) */}
+      {table.getSelectedRowModel().rows.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-full shadow-2xl animate-fade-in border border-gray-800">
+          <span className="text-sm font-medium text-gray-200">
+            {table.getSelectedRowModel().rows.length} invoice(s) selected
+          </span>
+          <div className="h-4 w-px bg-gray-700" />
+          <span className="text-sm font-semibold text-bill-green">
+            Total: $
+            {table
+              .getSelectedRowModel()
+              .rows.reduce(
+                (sum, r) => sum + (r.original as Invoice).amount,
+                0
+              )
+              .toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+          </span>
+          <Button
+            size="sm"
+            className="bg-bill-green text-white hover:bg-bill-green-dark transition-colors font-semibold"
+            onClick={() => {
+              const selectedIds = table
+                .getSelectedRowModel()
+                .rows.map((r) => (r.original as Invoice).id)
+                .join(",");
+              router.push(`/payables/checkout?ids=${selectedIds}`);
+            }}
+          >
+            Pay Selected Invoices →
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
