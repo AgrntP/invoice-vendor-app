@@ -25,6 +25,7 @@ interface PdfImportZoneProps {
 export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "extracting" | "done" | "error">("idle");
   const [extracted, setExtracted] = useState<ExtractedInvoiceData | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -56,6 +57,14 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
       return;
     }
     setFile(f);
+
+    if (isImage) {
+      const url = URL.createObjectURL(f);
+      setFilePreviewUrl(url);
+    } else {
+      setFilePreviewUrl(null);
+    }
+
     setStatus("idle");
     setExtracted(null);
     setErrorMessage("");
@@ -97,7 +106,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
       }
 
       // Đọc file thành dataURL và raw base64
-      const { base64, dataUrl } = await new Promise<{ base64: string; dataUrl: string }>((resolve, reject) => {
+      const { base64 } = await new Promise<{ base64: string; dataUrl: string }>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
@@ -127,6 +136,8 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
 
       setExtracted(json.data);
       setStatus("done");
+      // Tự động cập nhật ngay lập tức sang form bên cạnh
+      onDataExtracted(json.data);
     } catch {
       setErrorMessage("Lỗi kết nối. Vui lòng thử lại.");
       setStatus("error");
@@ -139,6 +150,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
 
   const handleRemoveFile = () => {
     setFile(null);
+    setFilePreviewUrl(null);
     setStatus("idle");
     setExtracted(null);
     setErrorMessage("");
@@ -191,47 +203,60 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
             </div>
           ) : (
             /* File selected state */
-            <div className="flex items-center justify-between gap-4">
-              {/* File info */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                  </svg>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                {/* File info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-bill-green-50 border border-bill-green-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-bill-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{file.name}</p>
+                    <p className="text-xs text-text-muted">{formatSize(file.size)}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">{file.name}</p>
-                  <p className="text-xs text-text-muted">{formatSize(file.size)}</p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleRemoveFile}
+                    className="text-xs text-text-muted hover:text-red-500 transition-colors px-2 py-1 rounded cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                  <Button
+                    onClick={handleExtract}
+                    disabled={status === "extracting"}
+                    size="sm"
+                    className="min-w-[130px]"
+                  >
+                    {status === "extracting" ? (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Extracting...
+                      </span>
+                    ) : (
+                      "Extract with AI"
+                    )}
+                  </Button>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={handleRemoveFile}
-                  className="text-xs text-text-muted hover:text-red-500 transition-colors px-2 py-1 rounded"
-                >
-                  Remove
-                </button>
-                <Button
-                  onClick={handleExtract}
-                  disabled={status === "extracting"}
-                  size="sm"
-                  className="min-w-[130px]"
-                >
-                  {status === "extracting" ? (
-                    <span className="flex items-center gap-1.5">
-                      <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Extracting...
-                    </span>
-                  ) : (
-                    "Extract with AI"
-                  )}
-                </Button>
-              </div>
+              {/* Live Image Document Preview */}
+              {filePreviewUrl && (
+                <div className="rounded-lg border border-border-default bg-gray-50 p-2 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={filePreviewUrl}
+                    alt="Document Preview"
+                    className="max-h-[300px] w-auto object-contain rounded"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

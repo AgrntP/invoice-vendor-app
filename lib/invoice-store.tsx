@@ -29,6 +29,7 @@ interface InvoiceContextValue {
   addInvoice: (data: InvoiceFormData) => Invoice;
   updateInvoice: (id: string, data: Partial<InvoiceFormData>) => void;
   deleteInvoice: (id: string) => void;
+  payInvoices: (ids: string[]) => void;
   getInvoice: (id: string) => Invoice | undefined;
 }
 
@@ -68,6 +69,12 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
     setInvoices((prev) => prev.filter((inv) => inv.id !== id));
   }, []);
 
+  const payInvoices = useCallback((ids: string[]) => {
+    setInvoices((prev) =>
+      prev.map((inv) => (ids.includes(inv.id) ? { ...inv, status: "paid" } : inv))
+    );
+  }, []);
+
   const getInvoice = useCallback(
     (id: string) => invoices.find((inv) => inv.id === id),
     [invoices]
@@ -75,7 +82,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
 
   return (
     <InvoiceContext.Provider
-      value={{ invoices, addInvoice, updateInvoice, deleteInvoice, getInvoice }}
+      value={{ invoices, addInvoice, updateInvoice, deleteInvoice, payInvoices, getInvoice }}
     >
       {children}
     </InvoiceContext.Provider>
