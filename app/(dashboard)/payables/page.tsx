@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { KPICards } from "@/components/payables/kpi-cards";
 import { FilterBar } from "@/components/payables/filter-bar";
 import { InvoiceTable } from "@/components/payables/invoice-table";
-import { mockInvoices } from "@/data/mock-invoices";
 import { InvoiceStatus } from "@/types/invoice";
-import { Plus, Upload, FileText } from "lucide-react";
 
 /**
  * Trang Accounts Payable List (/payables)
@@ -40,7 +39,6 @@ export default function PayablesPage() {
         <div>
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm text-text-muted mb-1">
-            <FileText className="h-3.5 w-3.5" />
             <span>Invoices</span>
             <span>/</span>
             <span className="text-text-primary font-medium">Payables</span>
@@ -56,17 +54,18 @@ export default function PayablesPage() {
 
         {/* Right: Action Buttons */}
         <div className="flex items-center gap-3">
-          {/* Import Button */}
-          <Button variant="outline" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
+          {/* Import / Create Invoice — link tới trang tạo invoice */}
+          <Link href="/payables/new">
+            <Button variant="outline">
+              Import PDF
+            </Button>
+          </Link>
 
-          {/* Create Invoice Button */}
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Invoice
-          </Button>
+          <Link href="/payables/new">
+            <Button>
+              Create Invoice
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -93,7 +92,6 @@ export default function PayablesPage() {
       {/* 4. DATA TABLE             */}
       {/* ======================== */}
       <InvoiceTable
-        data={mockInvoices}
         statusFilter={statusFilter}
         searchQuery={searchQuery}
       />
