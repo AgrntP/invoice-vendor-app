@@ -152,7 +152,11 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !file && inputRef.current?.click()}
+        onClick={() => {
+          if (!file) {
+            inputRef.current?.click();
+          }
+        }}
         className={[
           "relative rounded-xl border-2 border-dashed transition-all duration-150",
           isDragging
@@ -170,7 +174,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
           onChange={handleInputChange}
         />
 
-        <div className="px-8 py-8">
+        <div className="px-8 py-8 pointer-events-none">
           {!file ? (
             /* Empty state */
             <div className="flex flex-col items-center gap-2 text-center">
@@ -191,7 +195,7 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
             </div>
           ) : (
             /* File selected state */
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 pointer-events-auto">
               {/* File info */}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
@@ -208,13 +212,21 @@ export function PdfImportZone({ onDataExtracted }: PdfImportZoneProps) {
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={handleRemoveFile}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveFile();
+                  }}
                   className="text-xs text-text-muted hover:text-red-500 transition-colors px-2 py-1 rounded"
                 >
                   Remove
                 </button>
                 <Button
-                  onClick={handleExtract}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExtract();
+                  }}
                   disabled={status === "extracting"}
                   size="sm"
                   className="min-w-[130px]"
