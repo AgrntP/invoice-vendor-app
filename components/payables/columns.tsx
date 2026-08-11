@@ -18,20 +18,18 @@ import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 interface ColumnHandlers {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onPay: (id: string) => void;
 }
-
-
 
 /**
  * createColumns — tạo column definitions cho TanStack Table v9
  *
- * Nhận handlers để xử lý Edit/Delete từ parent component.
- * Cách này cho phép columns gọi context CRUD mà không cần
- * import context trực tiếp bên trong column definitions.
+ * Nhận handlers để xử lý Edit/Delete/Pay từ parent component.
  */
 export function createColumns({
   onEdit,
   onDelete,
+  onPay,
 }: ColumnHandlers): ColumnDef<TableFeatures, Invoice>[] {
   return [
     // === 1. Checkbox ===
@@ -190,6 +188,7 @@ export function createColumns({
       header: () => null,
       cell: ({ row }) => {
         const invoice = row.original;
+        const isPaid = invoice.status === "paid";
         return (
           <DropdownMenu
             trigger={
@@ -198,6 +197,11 @@ export function createColumns({
               </Button>
             }
           >
+            {!isPaid && (
+              <DropdownMenuItem onClick={() => onPay(invoice.id)}>
+                Pay Now
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onEdit(invoice.id)}>
               Edit
             </DropdownMenuItem>

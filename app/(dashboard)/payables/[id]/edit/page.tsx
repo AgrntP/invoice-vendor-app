@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { InvoiceStatus } from "@/types/invoice";
 import { useInvoices } from "@/lib/invoice-store";
+import { PdfImportZone, type ExtractedInvoiceData } from "@/components/create-invoice/pdf-import-zone";
 
 /**
  * Trang chỉnh sửa invoice: /payables/[id]/edit
  *
- * - Lấy dữ liệu invoice từ InvoiceContext theo id
- * - Pre-fill form với dữ liệu hiện tại
- * - Submit gọi updateInvoice() → redirect về /payables
+ * Layout Side-by-Side (2 cột song song trên Desktop):
+ * - Cột trái: Import tài liệu (PDF/Ảnh/TXT) & Xem trước
+ * - Cột phải: Form chỉnh sửa hóa đơn
  */
 export default function EditInvoicePage() {
   const router = useRouter();
@@ -36,6 +37,19 @@ export default function EditInvoicePage() {
     status: "draft" as InvoiceStatus,
     description: "",
   });
+
+  // Handler khi trích xuất tài liệu AI bên cột trái
+  const handleDataExtracted = (extracted: ExtractedInvoiceData) => {
+    setForm((prev) => ({
+      ...prev,
+      vendorName: extracted.vendorName || prev.vendorName,
+      invoiceNumber: extracted.invoiceNumber || prev.invoiceNumber,
+      invoiceDate: extracted.invoiceDate || prev.invoiceDate,
+      dueDate: extracted.dueDate || prev.dueDate,
+      amount: extracted.amount > 0 ? String(extracted.amount) : prev.amount,
+      description: extracted.description || prev.description,
+    }));
+  };
 
   // Load invoice data vào form
   useEffect(() => {
@@ -138,7 +152,7 @@ export default function EditInvoicePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl animate-fade-in">
+    <div className="space-y-6 max-w-7xl animate-fade-in">
       {/* Breadcrumb + Title */}
       <div>
         <div className="flex items-center gap-1.5 text-sm text-text-muted mb-1">
@@ -156,9 +170,24 @@ export default function EditInvoicePage() {
         )}
       </div>
 
-      {/* Form Card */}
-      <div className="rounded-xl border border-border-default bg-white shadow-[var(--shadow-card)] p-6">
-        <form onSubmit={handleSubmit} noValidate>
+      {/* 2-Column Side-by-Side Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Cột trái: Import Document & Live Preview */}
+        <div className="rounded-xl border border-border-default bg-white shadow-[var(--shadow-card)] p-6 space-y-4 lg:sticky lg:top-20">
+          <div>
+            <h2 className="text-base font-semibold text-text-primary">
+              Import / Document Preview
+            </h2>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Upload a document to extract/update details side-by-side.
+            </p>
+          </div>
+          <PdfImportZone onDataExtracted={handleDataExtracted} />
+        </div>
+
+        {/* Cột phải: Form Card */}
+        <div className="rounded-xl border border-border-default bg-white shadow-[var(--shadow-card)] p-6">
+          <form onSubmit={handleSubmit} noValidate>
           <div className="space-y-5">
             {/* Row 1: Vendor Name + Invoice Number */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -324,6 +353,7 @@ export default function EditInvoicePage() {
           </div>
         </form>
       </div>
+    </div>
     </div>
   );
 }
