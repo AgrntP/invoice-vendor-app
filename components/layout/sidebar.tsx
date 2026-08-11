@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Receipt,
+  
 } from "lucide-react";
 
 /**
@@ -44,6 +45,11 @@ const navItems = [
     label: "Settings",
     icon: Settings,
     href: "/settings",
+  },
+  {
+    label: "Vendors",
+    icon: FolderOpen,
+    href: "/vendors",
   },
 ];
 
