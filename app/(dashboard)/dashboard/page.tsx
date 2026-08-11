@@ -123,31 +123,22 @@ useEffect(() => {
   }, [selectedInvoice]);
 
   async function fetchInvoices() {
-    setLoading(true);
+  setLoading(true);
+  let query = supabase.from('invoices').select('*');
 
-    let query = supabase.from('invoices').select(`
-  *,
-  vendors (
-    id,
-    name
-  )
-`);
-
-    if (viewMode === 'inbox') {
-      query = query.is('deleted_at', null);
-    } else {
-      query = query.not('deleted_at', 'is', null);
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setInvoices(data);
-    } else if (error) {
-      console.error("Error fetching invoices:", error.message);
-    }
-    setLoading(false);
+  if (viewMode === 'inbox') {
+    // Only keep unprocessed or pending_review invoices in the active inbox
+    query = query
+      .is('deleted_at', null)
+      .in('status', ['unprocessed', 'pending_review']);
+  } else if (viewMode === 'trash') {
+    query = query.not('deleted_at', 'is', null);
   }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (!error && data) setInvoices(data);
+  setLoading(false);
+}
 
   async function loadDocumentPreview(filePath: string) {
     setPreviewUrl(null);
@@ -220,27 +211,39 @@ useEffect(() => {
 }
 
   async function handleApproveInvoice() {
-    if (!selectedInvoice) return;
-    setSaving(true);
+  if (!selectedInvoice) return;
+  setSaving(true);
 
-    const payload = {
-      ...formData,
-      status: 'approved' as const
-    };
+  // Sanitize payload to prevent 400 validation errors from Supabase
+  const payload = {
+    vendor_id: formData.vendor_id || null,
+    invoice_number: formData.invoice_number || null,
+    invoice_date: formData.invoice_date ? formData.invoice_date : null,
+    due_date: formData.due_date ? formData.due_date : null,
+    subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
+    tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
+    total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
+    description: formData.description || null,
+    status: 'unpaid' as const
+  };
 
-    const { data, error } = await supabase
-      .from('invoices')
-      .update(payload)
-      .eq('id', selectedInvoice.id)
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from('invoices')
+    .update(payload)
+    .eq('id', selectedInvoice.id)
+    .select()
+    .single();
 
-    if (!error && data) {
-      setSelectedInvoice(data);
-      setInvoices(prev => prev.map(inv => (inv.id === data.id ? data : inv)));
-    }
-    setSaving(false);
+  if (error) {
+    console.error("Supabase Update Error Details:", error);
+    alert(`Failed to approve: ${error.message} (Code: ${error.code})`);
+  } else if (data) {
+    setSelectedInvoice(data);
+    setInvoices(prev => prev.map(inv => (inv.id === data.id ? data : inv)));
   }
+  
+  setSaving(false);
+}
 
   function toggleSelectCard(id: string) {
     setSelectedIds(prev =>
