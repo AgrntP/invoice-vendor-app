@@ -371,6 +371,7 @@ function VendorCheckoutContent() {
             </svg>
             256-Bit SSL Encrypted &amp; Secure Payment
           </div>
+
         </div>
 
         {/* RIGHT: QR Card ─ 5 cols */}

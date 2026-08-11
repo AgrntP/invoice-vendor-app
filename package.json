@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.16.0",
+    "@stripe/react-stripe-js": "^6.8.1",
+    "@stripe/stripe-js": "^9.13.0",
     "@supabase/server": "^1.4.1",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
@@ -26,6 +28,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "stripe": "^22.5.0",
     "tailwind-merge": "^3.6.0",
     "tesseract.js": "^7.0.0"
   },
