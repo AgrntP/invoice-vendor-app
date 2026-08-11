@@ -27,6 +27,7 @@ interface Invoice {
   vendor_id?: string | null;
   invoice_number?: string | null;
   invoice_date?: string | null;
+  currency?: 'usd' | 'vnd';
   due_date?: string | null;
   subtotal?: number | null;
   tax?: number | null;
@@ -65,10 +66,12 @@ const [formData, setFormData] = useState({
   invoice_number: '',
   invoice_date: '',
   due_date: '',
+  currency: 'usd',
   subtotal: 0,
   tax: 0,
   total: 0,
-  description: ''
+  description: '',
+  
 });
 
 // 1. Add vendors state
@@ -95,12 +98,14 @@ useEffect(() => {
   }, [viewMode]);
 
   useEffect(() => {
+    console.log('Selected Invoice changed:', selectedInvoice?.currency);
   if (selectedInvoice) {
     setFormData({
       vendor_id: selectedInvoice.vendor_id || '',
       invoice_number: selectedInvoice.invoice_number || '',
       invoice_date: selectedInvoice.invoice_date || '',
       due_date: selectedInvoice.due_date || '',
+      currency: selectedInvoice.currency?.toLowerCase() as 'usd' | 'vnd' || 'vnd',
       subtotal: selectedInvoice.subtotal || 0,
       tax: selectedInvoice.tax || 0,
       total: selectedInvoice.total || 0,
@@ -621,111 +626,125 @@ async function handleSoftDeleteSingle(id: string) {
                 </div>
 
                 {/* Form Fields */}
-                <div className="p-6 space-y-4 flex-1">
-                  {/* VENDOR SELECTION DROPDOWN */}
-<div>
-  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-    Vendor
-  </label>
-  <select
-    value={formData.vendor_id || ''}
-    onChange={e => setFormData({ ...formData, vendor_id: e.target.value || null })}
-    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 transition"
-  >
-    <option value="">-- Select Vendor --</option>
-    {vendors.map(v => (
-      <option key={v.id} value={v.id}>
-        {v.name}
-      </option>
-    ))}
-  </select>
+<div className="p-6 space-y-4 flex-1">
+  {/* VENDOR SELECTION DROPDOWN */}
+  <div>
+    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+      Vendor
+    </label>
+    <select
+      value={formData.vendor_id || ''}
+      onChange={e => setFormData({ ...formData, vendor_id: e.target.value || null })}
+      className="w-full bg-white !border !border-indigo-400 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium appearance-none focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20 transition"
+    >
+      <option value="">-- Select Vendor --</option>
+      {vendors.map(v => (
+        <option key={v.id} value={v.id}>
+          {v.name}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <div>
+    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+      Invoice Number
+    </label>
+    <input
+      type="text"
+      value={formData.invoice_number}
+      onChange={e => setFormData({ ...formData, invoice_number: e.target.value })}
+      placeholder="e.g. INV-2026-001"
+      className="w-full bg-white !border !border-indigo-400 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20 transition"
+    />
+  </div>
+
+  <div className="grid grid-cols-2 gap-3">
+    <div>
+      <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+        Invoice Date
+      </label>
+      <input
+        type="date"
+        value={formData.invoice_date}
+        onChange={e => setFormData({ ...formData, invoice_date: e.target.value })}
+        className="w-full bg-white !border !border-indigo-400 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20 transition"
+      />
+    </div>
+    <div>
+      <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+        Due Date
+      </label>
+      <input
+        type="date"
+        value={formData.due_date}
+        onChange={e => setFormData({ ...formData, due_date: e.target.value })}
+        className="w-full bg-white !border !border-indigo-400 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20 transition"
+      />
+    </div>
+  </div>
+
+  {/* Accounting Amounts Block */}
+  <div className="bg-indigo-50/20 !border !border-indigo-300 rounded-xl p-4 space-y-3">
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-slate-700 font-bold">Currency</span>
+      <select
+        value={formData.currency}
+        onChange={e => setFormData({ ...formData, currency: e.target.value as 'usd' | 'vnd' })}
+        className="w-28 bg-white !border !border-indigo-400 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20"
+      >
+        <option value="usd">USD</option>
+        <option value="vnd">VND</option>
+      </select>
+    </div>
+
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-slate-700 font-bold">Subtotal</span>
+      <input
+        type="number"
+        step="0.01"
+        value={formData.subtotal}
+        onChange={e => setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
+        className="w-28 text-right bg-white !border !border-indigo-400 rounded-lg px-2 py-1 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20"
+      />
+    </div>
+
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-slate-700 font-bold">Tax</span>
+      <input
+        type="number"
+        step="0.01"
+        value={formData.tax}
+        onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })}
+        className="w-28 text-right bg-white !border !border-indigo-400 rounded-lg px-2 py-1 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20"
+      />
+    </div>
+
+    <div className="pt-3 !border-t !border-indigo-300 flex items-center justify-between text-xs font-bold">
+      <span className="text-slate-900">Total Amount</span>
+      <input
+        type="number"
+        step="0.01"
+        value={formData.total}
+        onChange={e => setFormData({ ...formData, total: parseFloat(e.target.value) || 0 })}
+        className="w-28 text-right bg-white !border-2 !border-indigo-500 rounded-lg px-2 py-1 text-xs text-indigo-900 font-extrabold focus:!outline-none focus:!border-indigo-700 focus:!ring-2 focus:!ring-indigo-500/20"
+      />
+    </div>
+  </div>
+
+  <div>
+    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+      Description / Line Items
+    </label>
+    <textarea
+      rows={4}
+      value={formData.description}
+      onChange={e => setFormData({ ...formData, description: e.target.value })}
+      placeholder="Summary of billed items..."
+      className="w-full bg-white !border !border-indigo-400 rounded-xl p-3 text-xs text-slate-900 font-medium focus:!outline-none focus:!border-indigo-600 focus:!ring-2 focus:!ring-indigo-500/20 transition"
+    />
+  </div>
 </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                      Invoice Number
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.invoice_number}
-                      onChange={e => setFormData({ ...formData, invoice_number: e.target.value })}
-                      placeholder="e.g. INV-2026-001"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 transition"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                        Invoice Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.invoice_date}
-                        onChange={e => setFormData({ ...formData, invoice_date: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 transition"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                        Due Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.due_date}
-                        onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 transition"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Accounting Amounts Block */}
-                  <div className="bg-slate-50 border border-slate-300/80 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600">Subtotal</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.subtotal}
-                        onChange={e => setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
-                        className="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600">Tax</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.tax}
-                        onChange={e => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })}
-                        className="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                      />
-                    </div>
-                    <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-900">Total Amount</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.total}
-                        onChange={e => setFormData({ ...formData, total: parseFloat(e.target.value) || 0 })}
-                        className="w-28 text-right bg-white border border-indigo-500 rounded-lg px-2 py-1 text-xs text-indigo-700 font-bold focus:border-indigo-600 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                      Description / Line Items
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={formData.description}
-                      onChange={e => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Summary of billed items..."
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 transition"
-                    />
-                  </div>
-
-                </div>
               </div>
 
             </div>

@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     const invoiceNumber = parseStringField(fields, ['invoiceNumber', 'invoiceNo', 'invoice_id', 'documentNumber', 'number']) || invoice.invoice_number;
     const invoiceDate = parseStringField(fields, ['invoiceDate', 'date', 'issueDate', 'documentDate']) || invoice.invoice_date;
     const dueDate = parseStringField(fields, ['dueDate', 'paymentDueDate', 'due_date', 'payByDate']) || invoice.due_date;
-    
+    const currency = parseStringField(fields, ['currency', 'currencyCode', 'currency_type'])?.toLowerCase() || invoice.currency?.toLowerCase() as 'usd' | 'vnd' || 'vnd';
     const subtotal = parseNumericField(fields, ['subtotal', 'subTotal', 'netAmount', 'sub_total', 'subTotalAmount']) ?? invoice.subtotal;
     const tax = parseNumericField(fields, ['tax', 'taxAmount', 'vat', 'vatAmount', 'totalTax', 'salesTax']) ?? invoice.tax;
     const total = parseNumericField(fields, ['total', 'totalAmount', 'grossAmount', 'amountDue', 'balanceDue']) ?? invoice.total;
@@ -144,6 +144,7 @@ export async function POST(request: Request) {
       invoice_number: invoiceNumber,
       invoice_date: invoiceDate,
       due_date: dueDate,
+      currency: currency,
       subtotal: subtotal,
       tax: tax,
       total: total,

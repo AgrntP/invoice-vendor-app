@@ -183,6 +183,7 @@ interface Invoice {
   file_name: string;
   file_path: string;
   status: 'unprocessed' | 'pending_review' | 'unpaid' | 'paid';
+  currency: 'usd' | 'vnd';
   invoice_number?: string | null;
   invoice_date?: string | null;
   due_date?: string | null;
