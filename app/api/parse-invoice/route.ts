@@ -33,11 +33,15 @@ export async function POST(request: Request) {
     
     // Map dữ liệu từ Base64.ai về cấu trúc bạn mong muốn
     const mappedData = {
-      vendorName: data?.vendor?.value || "",
+      vendorName: data?.companyName?.value || "",
+      vendorAddress: data?.companyAddress?.value || "",
       invoiceNumber: data?.invoiceNumber?.value || "",
       invoiceDate: data?.date?.value || "",
       dueDate: data?.dueDate?.value || "",
       amount: parseFloat(data?.total?.value || 0),
+      tax: data?.tax?.value || "",
+      currency: data?.currency?.value || "",
+      total: data?.total?.value || "",
       description: "Hóa đơn dịch vụ"
     };
 

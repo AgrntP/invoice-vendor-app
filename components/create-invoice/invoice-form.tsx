@@ -358,3 +358,54 @@ export function InvoiceForm({ prefillData }: InvoiceFormProps) {
     </form>
   );
 }
+
+
+// // Inside your Invoice Coding Drawer / Review Form Component
+// export function InvoiceCodingForm({ invoice, vendors }: { invoice: Invoice, vendors: Vendor[] }) {
+//   // 1. Try to exact match raw_vendor_name to an existing vendor name
+//   const autoMatchedVendor = vendors.find(
+//     (v) => v.name.toLowerCase() === invoice.raw_vendor_name?.toLowerCase()
+//   );
+
+//   // 2. Default state: Use existing vendor_id OR auto-matched ID OR empty string
+//   const [selectedVendorId, setSelectedVendorId] = useState<string>(
+//     invoice.vendor_id || autoMatchedVendor?.id || ""
+//   );
+
+//   return (
+//     <div className="space-y-4">
+//       {/* OCR Detected Text Badge */}
+//       {invoice.raw_vendor_name && (
+//         <div className="text-xs text-gray-500">
+//           OCR Detected Vendor: <span className="font-semibold">{invoice.raw_vendor_name}</span>
+//         </div>
+//       )}
+
+//       {/* Vendor Selector */}
+//       <label className="block text-sm font-medium">Assign Master Vendor</label>
+//       <select 
+//         value={selectedVendorId} 
+//         onChange={(e) => setSelectedVendorId(e.target.value)}
+//         className="w-full border rounded-lg p-2 text-sm"
+//       >
+//         <option value="">-- Select Vendor --</option>
+//         {vendors.map((vendor) => (
+//           <option key={vendor.id} value={vendor.id}>
+//             {vendor.name}
+//           </option>
+//         ))}
+//       </select>
+
+//       {/* Create Vendor Option */}
+//       {!selectedVendorId && (
+//         <button 
+//           type="button" 
+//           onClick={() => handleCreateVendor(invoice.raw_vendor_name)}
+//           className="text-xs text-blue-600 hover:underline"
+//         >
+//           + Add "{invoice.raw_vendor_name}" as a new vendor
+//         </button>
+//       )}
+//     </div>
+//   );
+// }
