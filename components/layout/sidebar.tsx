@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Receipt,
-  
 } from "lucide-react";
 
 /**
