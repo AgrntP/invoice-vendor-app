@@ -14,6 +14,7 @@ import {
   CheckSquare,
   Square,
   RotateCcw,
+  Upload,
   Inbox as InboxIcon
 } from 'lucide-react';
 
@@ -59,6 +60,55 @@ export default function InvoiceInboxGrid() {
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+
+  const [uploading, setUploading] = useState(false);
+
+async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  setUploading(true);
+
+  try {
+    // 1. Generate a collision-free filename
+    const fileExt = file.name.split('.').pop();
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `${Date.now()}_${cleanFileName}`;
+
+    // 2. Upload binary to Supabase Storage 'invoices' bucket
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from('invoices')
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (storageError) throw storageError;
+
+    // 3. Create initial database entry in PostgreSQL
+    const { error: dbError } = await supabase
+      .from('invoices')
+      .insert([
+        {
+          file_path: `invoices/${storagePath}`,
+          file_name: file.name,
+          status: 'unprocessed'
+        }
+      ]);
+
+    if (dbError) throw dbError;
+
+    // 4. Refresh grid to show newly added invoice
+    await fetchInvoices();
+  } catch (err: any) {
+    console.error('Upload Error:', err);
+    alert(`Upload failed: ${err.message || 'Unknown error'}`);
+  } finally {
+    setUploading(false);
+    // Reset file input value
+    e.target.value = '';
+  }
+}
 
   // Form State inside Modal
 const [formData, setFormData] = useState({
@@ -222,6 +272,7 @@ useEffect(() => {
       invoice_number: formData.invoice_number || null,
       invoice_date: formData.invoice_date ? formData.invoice_date : null,
       due_date: formData.due_date ? formData.due_date : null,
+      currency: formData.currency.toLowerCase() || 'vnd',
       subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
       tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
       total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
@@ -391,33 +442,55 @@ async function handleSoftDeleteSingle(id: string) {
   return (
     <div className="min-h-screen bg-slate-100/80 text-slate-900 p-6 font-sans">
       
-      {/* HEADER & VIEW TOGGLE */}
-      <div className="max-w-7xl mx-auto w-full mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-800">
-          {viewMode === 'inbox' ? 'Invoice Inbox' : 'Trash Bin'}
-        </h1>
+      {/* HEADER & CONTROLS */}
+<div className="max-w-7xl mx-auto w-full mb-6 flex items-center justify-between gap-4">
+  <h1 className="text-lg font-bold text-slate-800">
+    {viewMode === 'inbox' ? 'Invoice Inbox' : 'Trash Bin'}
+  </h1>
 
-        <div className="flex bg-slate-200/80 p-1 rounded-xl gap-1 border border-slate-300/80">
-          <button
-            onClick={() => setViewMode('inbox')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === 'inbox' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <InboxIcon className="w-3.5 h-3.5" />
-            Inbox
-          </button>
-          <button
-            onClick={() => setViewMode('trash')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === 'trash' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Trash Bin
-          </button>
-        </div>
-      </div>
+  <div className="flex items-center gap-3">
+    {/* UPLOAD BUTTON */}
+    <label className={`flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm cursor-pointer transition ${
+      uploading ? 'opacity-70 pointer-events-none' : ''
+    }`}>
+      {uploading ? (
+        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <Upload className="w-3.5 h-3.5" />
+      )}
+      <span>{uploading ? 'Uploading...' : 'Upload'}</span>
+      <input
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.txt"
+        onChange={handleFileUpload}
+        disabled={uploading}
+        className="hidden"
+      />
+    </label>
+
+    {/* VIEW TOGGLE SWITCH */}
+    <div className="flex bg-slate-200/80 p-1 rounded-xl gap-1 border border-slate-300/80">
+      <button
+        onClick={() => setViewMode('inbox')}
+        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          viewMode === 'inbox' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+        }`}
+      >
+        <InboxIcon className="w-3.5 h-3.5" />
+        Inbox
+      </button>
+      <button
+        onClick={() => setViewMode('trash')}
+        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          viewMode === 'trash' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+        }`}
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+        Trash Bin
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* BULK ACTION HEADER */}
       {selectedIds.length > 0 && (

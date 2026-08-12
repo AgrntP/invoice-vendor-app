@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+
+import { supabase } from '@/lib/supabase';
 import {
   Building2,
   RefreshCw,
@@ -26,10 +27,6 @@ import {
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
 
 const BANK_OPTIONS = ['MBBank', 'Vietcombank', 'VietinBank', 'HDBank', 'BIDV'] as const;
 

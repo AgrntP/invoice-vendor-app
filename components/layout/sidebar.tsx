@@ -26,11 +26,6 @@ const navItems = [
     href: "/dashboard",
   },
   {
-    label: "Documents",
-    icon: FolderOpen,
-    href: "/documents",
-  },
-  {
     label: "Vendors",
     icon: FolderOpen,
     href: "/vendors",
@@ -78,11 +73,9 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {!isCollapsed && (
           <div className="animate-fade-in">
             <h1 className="text-lg font-bold tracking-tight text-text-primary">
-              BILL
+              BillPay
             </h1>
-            <p className="text-[10px] leading-none text-text-muted">
-              Finance Manager
-            </p>
+
           </div>
         )}
       </div>

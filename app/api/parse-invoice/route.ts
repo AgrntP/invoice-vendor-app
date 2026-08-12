@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
 
 // Helper to safely parse numeric values from string fields (e.g. "$1,250.50" -> 1250.50)
 function parseNumericField(fields: Record<string, any>, possibleKeys: string[]): number | null {

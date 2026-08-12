@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * Trang chính sẽ tự động chuyển hướng user đến dashboard payables
  */
 export default function Home() {
-  redirect("/payables");
+  redirect("/dashboard");
 }
