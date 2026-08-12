@@ -34,9 +34,8 @@ interface InvoiceRow {
 interface VendorRow {
   id: string;
   name: string;
-  bank_name?: string | null;
-  account_number?: string | null;
-  account_holder?: string | null;
+  bank_identifier?: string | null;
+  bank_number?: string | null;
 }
 
 /* ── QR Card ────────────────────────────────────────────────── */
@@ -48,15 +47,15 @@ function QRCard({
   total: number;
 }) {
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const hasPaymentInfo = !!(vendor?.bank_name || vendor?.account_number);
+  const hasPaymentInfo = !!(vendor?.bank_identifier || vendor?.bank_number);
 
   const generateQR = useCallback(async () => {
     if (!vendor) return;
     const payload = [
       "PAYMENT",
       `VENDOR:${vendor.name}`,
-      `BANK:${vendor.bank_name || "N/A"}`,
-      `ACCOUNT:${vendor.account_number || "N/A"}`,
+      `BANK:${vendor.bank_identifier || "N/A"}`,
+      `ACCOUNT:${vendor.bank_number || "N/A"}`,
       `AMOUNT:${total.toFixed(2)}`,
       `TS:${Date.now()}`,
     ].join("|");
@@ -128,10 +127,10 @@ function QRCard({
         {vendor && (
           <div className="w-full text-center space-y-0.5">
             <p className="text-sm font-bold text-text-primary">{vendor.name}</p>
-            {vendor.bank_name && (
+            {vendor.bank_identifier && (
               <p className="text-xs text-text-secondary">
-                {vendor.bank_name}
-                {vendor.account_number && ` · ${vendor.account_number}`}
+                {vendor.bank_identifier}
+                {vendor.bank_number && ` · ${vendor.bank_number}`}
               </p>
             )}
             <p className="text-sm font-bold text-bill-green mt-1">
@@ -176,7 +175,7 @@ function VendorCheckoutContent() {
       if (vendorId) {
         const { data } = await supabase
           .from("vendors")
-          .select("id, name, bank_name, account_number, account_holder")
+          .select("id, name, bank_identifier, bank_number")
           .eq("id", vendorId)
           .single();
         if (data) setVendor(data);

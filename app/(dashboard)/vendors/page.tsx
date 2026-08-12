@@ -17,9 +17,8 @@ interface Vendor {
   name: string;
   email?: string;
   created_at: string;
-  bank_name?: string | null;
-  account_number?: string | null;
-  account_holder?: string | null;
+  bank_identifier?: string | null;
+  bank_number?: string | null;
 }
 
 interface VendorWithBalance extends Vendor {
@@ -39,9 +38,8 @@ function CreateVendorModal({
   const [form, setForm] = useState({
     name: '',
     email: '',
-    bank_name: '',
-    account_number: '',
-    account_holder: '',
+    bank_identifier: '',
+    bank_number: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -55,9 +53,8 @@ function CreateVendorModal({
     const payload = {
       name: form.name.trim(),
       email: form.email.trim() || null,
-      bank_name: form.bank_name.trim() || null,
-      account_number: form.account_number.trim() || null,
-      account_holder: form.account_holder.trim() || null,
+      bank_identifier: form.bank_identifier.trim() || null,
+      bank_number: form.bank_number.trim() || null,
     };
 
     const { data, error: dbErr } = await supabase
@@ -138,22 +135,15 @@ function CreateVendorModal({
               <div className="space-y-3">
                 <input
                   type="text"
-                  value={form.account_holder}
-                  onChange={(e) => setForm({ ...form, account_holder: e.target.value })}
-                  placeholder="Account holder name"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition"
-                />
-                <input
-                  type="text"
-                  value={form.bank_name}
-                  onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                  value={form.bank_identifier}
+                  onChange={(e) => setForm({ ...form, bank_identifier: e.target.value })}
                   placeholder="Bank name (e.g. Vietcombank)"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition"
                 />
                 <input
                   type="text"
-                  value={form.account_number}
-                  onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                  value={form.bank_number}
+                  onChange={(e) => setForm({ ...form, bank_number: e.target.value })}
                   placeholder="Account number"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition"
                 />

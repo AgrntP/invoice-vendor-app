@@ -28,9 +28,8 @@ const supabase = createClient(
 interface Vendor {
   id: string;
   name: string;
-  bank_name?: string | null;
-  account_number?: string | null;
-  account_holder?: string | null;
+  bank_identifier?: string | null;
+  bank_number?: string | null;
 }
 
 /* ── Payment Details Card — editable ─────────────────────── */
@@ -44,35 +43,49 @@ function PaymentDetailsCard({
   onSaved: (updated: Vendor) => void;
 }) {
   const [form, setForm] = useState({
-    account_holder: vendor.account_holder || '',
-    bank_name: vendor.bank_name || '',
-    account_number: vendor.account_number || '',
+    name: vendor.name || '',
+    bank_identifier: vendor.bank_identifier || '',
+    bank_number: vendor.bank_number || '',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Compare against actual values currently saved in the database
   const isDirty =
-    form.account_holder !== (vendor.account_holder || '') ||
-    form.bank_name !== (vendor.bank_name || '') ||
-    form.account_number !== (vendor.account_number || '');
+    form.name.trim() !== (vendor.name || '').trim() ||
+    form.bank_identifier.trim() !== (vendor.bank_identifier || '').trim() ||
+    form.bank_number.trim() !== (vendor.bank_number || '').trim();
 
   async function handleSave() {
     setSaving(true);
-    const { data, error } = await supabase
-      .from('vendors')
-      .update({
-        account_holder: form.account_holder.trim() || null,
-        bank_name: form.bank_name.trim() || null,
-        account_number: form.account_number.trim() || null,
-      })
-      .eq('id', vendor.id)
-      .select()
-      .single();
-    setSaving(false);
-    if (!error && data) {
-      onSaved(data);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .update({
+          name: form.name.trim(),
+          bank_identifier: form.bank_identifier.trim() || null,
+          bank_number: form.bank_number.trim() || null,
+        })
+        .eq('id', vendor.id)
+        .select()
+        .single();
+
+      setSaving(false);
+      if (error) {
+        console.error('Error updating vendor payment details:', error);
+        alert(`Failed to save to database: ${error.message}`);
+        return;
+      }
+      if (data) {
+        onSaved(data);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (err: unknown) {
+      setSaving(false);
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Unexpected error updating payment details:', err);
+      alert(`Unexpected error: ${errMsg}`);
     }
   }
 
@@ -97,7 +110,6 @@ function PaymentDetailsCard({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Payment Details</h3>
-                <p className="text-[11px] text-gray-500">{vendor.name}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition cursor-pointer">
@@ -113,8 +125,8 @@ function PaymentDetailsCard({
               </label>
               <input
                 type="text"
-                value={form.account_holder}
-                onChange={(e) => setForm({ ...form, account_holder: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Account holder name"
                 className={inputCls}
               />
@@ -125,8 +137,8 @@ function PaymentDetailsCard({
               </label>
               <input
                 type="text"
-                value={form.bank_name}
-                onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                value={form.bank_identifier}
+                onChange={(e) => setForm({ ...form, bank_identifier: e.target.value })}
                 placeholder="e.g. Vietcombank"
                 className={inputCls}
               />
@@ -137,8 +149,8 @@ function PaymentDetailsCard({
               </label>
               <input
                 type="text"
-                value={form.account_number}
-                onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                value={form.bank_number}
+                onChange={(e) => setForm({ ...form, bank_number: e.target.value })}
                 placeholder="Account number"
                 className={inputCls}
               />
@@ -500,7 +512,7 @@ export default function VendorDashboardPage() {
               id="vendor-payment-info-btn"
               onClick={() => setShowPaymentInfo(true)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
-                vendor.bank_name || vendor.account_number
+                vendor.bank_identifier || vendor.bank_number
                   ? 'bg-bill-green-light text-bill-green hover:bg-bill-green/20 border border-bill-green/25'
                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
               }`}
