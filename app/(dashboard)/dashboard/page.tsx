@@ -264,38 +264,91 @@ useEffect(() => {
 
   async function handleApproveInvoice() {
     if (!selectedInvoice) return;
+
+    const vendorId = formData.vendor_id?.trim();
+    const invoiceNumber = formData.invoice_number?.trim();
+    const subtotal = Number(formData.subtotal) || 0;
+    const tax = Number(formData.tax) || 0;
+    const total = Number(formData.total) || 0;
+
+    // 1. Constraint: Vendor is not missing
+    if (!vendorId) {
+      alert("Please select a vendor before approving.");
+      return;
+    }
+
+    // 2. Constraint: Invoice Number must not be empty/null
+    if (!invoiceNumber) {
+      alert("Invoice Number cannot be empty.");
+      return;
+    }
+
+    // 3. Constraint: Total must equal Subtotal + Tax (accounting for floating-point precision)
+    if (Math.abs(total - (subtotal + tax)) >= 0.001) {
+      alert(
+        `Total mismatch! Expected total: ${(subtotal + tax).toFixed(2)}`
+      );
+      return;
+    }
+
     setSaving(true);
 
-    // Sanitize payload to prevent 400 validation errors from Supabase
-    const payload = {
-      vendor_id: formData.vendor_id || null,
-      invoice_number: formData.invoice_number || null,
-      invoice_date: formData.invoice_date ? formData.invoice_date : null,
-      due_date: formData.due_date ? formData.due_date : null,
-      currency: formData.currency.toLowerCase() || 'vnd',
-      subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
-      tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
-      total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
-      description: formData.description || null,
-      status: 'unpaid' as const
-    };
+    try {
+      // 4. Constraint: Duplicate check against existing 'unpaid' or 'paid' invoices
+      const { data: duplicateInvoices, error: dupCheckError } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('invoice_number', invoiceNumber)
+        .in('status', ['unpaid', 'paid'])
+        .is('deleted_at', null)
+        .neq('id', selectedInvoice.id);
 
-    const { data, error } = await supabase
-      .from('invoices')
-      .update(payload)
-      .eq('id', selectedInvoice.id)
-      .select()
-      .single();
+      if (dupCheckError) {
+        alert(`Error verifying duplicate invoice number: ${dupCheckError.message}`);
+        setSaving(false);
+        return;
+      }
 
-    if (error) {
-      console.error("Supabase Update Error Details:", error);
-      alert(`Failed to approve: ${error.message} (Code: ${error.code})`);
+      if (duplicateInvoices && duplicateInvoices.length > 0) {
+        alert(
+          `Invoice number "${invoiceNumber}" is a duplication.`
+        );
+        setSaving(false);
+        return;
+      }
+
+      // Update Payload
+      const payload = {
+        vendor_id: vendorId,
+        invoice_number: invoiceNumber,
+        invoice_date: formData.invoice_date ? formData.invoice_date : null,
+        due_date: formData.due_date ? formData.due_date : null,
+        currency: formData.currency.toLowerCase() || 'vnd',
+        subtotal,
+        tax,
+        total,
+        description: formData.description || null,
+        status: 'unpaid' as const
+      };
+
+      const { data, error } = await supabase
+        .from('invoices')
+        .update(payload)
+        .eq('id', selectedInvoice.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase Update Error Details:", error);
+        alert(`Failed to approve: ${error.message} (Code: ${error.code})`);
+      } else if (data) {
+        setSelectedInvoice(null);
+        await fetchInvoices();
+      }
+    } catch (err: any) {
+      alert(`Unexpected error during validation: ${err.message}`);
+    } finally {
       setSaving(false);
-    } else if (data) {
-      setSelectedInvoice(null);
-      setSaving(false);
-      await fetchInvoices();
-      window.location.reload();
     }
   }
 

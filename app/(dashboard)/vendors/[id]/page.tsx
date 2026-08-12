@@ -779,7 +779,7 @@ export default function VendorDashboardPage() {
                             className="w-3.5 h-3.5 cursor-pointer accent-indigo-600"
                           />
                         </th>
-                        <th className="p-3.5">File Name</th>
+                        <th className="p-3.5">Invoice Number</th>
                         <th className="p-3.5">Invoice Date</th>
                         <th className="p-3.5">Due Date</th>
                         <th className="p-3.5 text-right">Total Amount</th>
@@ -812,7 +812,7 @@ export default function VendorDashboardPage() {
                             <span className="flex items-center gap-2 hover:text-indigo-700 transition">
                               <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
                               <span className="underline underline-offset-2 decoration-slate-300">
-                                {inv.file_name}
+                                {inv.invoice_number}
                               </span>
                             </span>
                           </td>
@@ -877,7 +877,7 @@ export default function VendorDashboardPage() {
                             <span className="flex items-center gap-2 hover:text-emerald-700 transition">
                               <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
                               <span className="underline underline-offset-2 decoration-slate-300">
-                                {inv.file_name}
+                                {inv.invoice_number}
                               </span>
                             </span>
                           </td>
