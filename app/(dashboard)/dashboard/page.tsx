@@ -213,39 +213,40 @@ useEffect(() => {
 }
 
   async function handleApproveInvoice() {
-  if (!selectedInvoice) return;
-  setSaving(true);
+    if (!selectedInvoice) return;
+    setSaving(true);
 
-  // Sanitize payload to prevent 400 validation errors from Supabase
-  const payload = {
-    vendor_id: formData.vendor_id || null,
-    invoice_number: formData.invoice_number || null,
-    invoice_date: formData.invoice_date ? formData.invoice_date : null,
-    due_date: formData.due_date ? formData.due_date : null,
-    subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
-    tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
-    total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
-    description: formData.description || null,
-    status: 'unpaid' as const
-  };
+    // Sanitize payload to prevent 400 validation errors from Supabase
+    const payload = {
+      vendor_id: formData.vendor_id || null,
+      invoice_number: formData.invoice_number || null,
+      invoice_date: formData.invoice_date ? formData.invoice_date : null,
+      due_date: formData.due_date ? formData.due_date : null,
+      subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
+      tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
+      total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
+      description: formData.description || null,
+      status: 'unpaid' as const
+    };
 
-  const { data, error } = await supabase
-    .from('invoices')
-    .update(payload)
-    .eq('id', selectedInvoice.id)
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from('invoices')
+      .update(payload)
+      .eq('id', selectedInvoice.id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error("Supabase Update Error Details:", error);
-    alert(`Failed to approve: ${error.message} (Code: ${error.code})`);
-  } else if (data) {
-    setSelectedInvoice(data);
-    setInvoices(prev => prev.map(inv => (inv.id === data.id ? data : inv)));
+    if (error) {
+      console.error("Supabase Update Error Details:", error);
+      alert(`Failed to approve: ${error.message} (Code: ${error.code})`);
+      setSaving(false);
+    } else if (data) {
+      setSelectedInvoice(null);
+      setSaving(false);
+      await fetchInvoices();
+      window.location.reload();
+    }
   }
-  
-  setSaving(false);
-}
 
   function toggleSelectCard(id: string) {
     setSelectedIds(prev =>
@@ -345,6 +346,43 @@ async function handleSoftDeleteSingle(id: string) {
     setDeleting(false);
   }
 
+  // RESTORE SINGLE ITEM FROM TRASH
+  async function handleRestoreSingle(id: string) {
+    setDeleting(true);
+    const { error } = await supabase
+      .from('invoices')
+      .update({ deleted_at: null })
+      .eq('id', id);
+
+    if (!error) {
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+      setSelectedIds(prev => prev.filter(item => item !== id));
+      setSelectedInvoice(null);
+    } else {
+      alert(`Error restoring item: ${error.message}`);
+    }
+    setDeleting(false);
+  }
+
+  // PERMANENT DELETE SINGLE ITEM FROM TRASH
+  async function handlePermanentDeleteSingle(id: string) {
+    if (!confirm('Permanently delete this invoice? This cannot be undone.')) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+      setSelectedIds(prev => prev.filter(item => item !== id));
+      setSelectedInvoice(null);
+    } else {
+      alert(`Error deleting item: ${error.message}`);
+    }
+    setDeleting(false);
+  }
+
   // Pagination Calculations
   const totalPages = Math.ceil(invoices.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -406,17 +444,17 @@ async function handleSoftDeleteSingle(id: string) {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-xl shadow-sm transition disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                {deleting ? 'Moving...' : `Move ${selectedIds.length} to Trash`}
+                {deleting ? 'Deleting...' : `Delete (${selectedIds.length})`}
               </button>
             ) : (
               <>
                 <button
                   onClick={handleRestoreSelected}
                   disabled={deleting}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-xl shadow-sm transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-xl shadow-sm transition disabled:opacity-50"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  {deleting ? 'Restoring...' : `Restore ${selectedIds.length}`}
+                  {deleting ? 'Restoring...' : 'Undo Delete'}
                 </button>
                 <button
                   onClick={handlePermanentDelete}
@@ -424,7 +462,7 @@ async function handleSoftDeleteSingle(id: string) {
                   className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-xl shadow-sm transition disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  Permanently Delete
+                  Delete
                 </button>
               </>
             )}
@@ -442,11 +480,9 @@ async function handleSoftDeleteSingle(id: string) {
           {viewMode === 'inbox' ? 'No inbound files in your inbox.' : 'Trash bin is empty.'}
         </div>
       ) : (
-        <div className="flex flex-col justify-between min-h-[calc(100vh-8rem)]">
-          
-          {/* HIGH CONTRAST CARDS GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-7xl mx-auto w-full">
-            {paginatedInvoices.map(inv => {
+        <div className="max-w-7xl mx-auto w-full space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {invoices.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((inv) => {
               const isSelected = selectedIds.includes(inv.id);
               return (
                 <div
@@ -584,46 +620,67 @@ async function handleSoftDeleteSingle(id: string) {
   )}
 </div>
 
-              {/* RIGHT HALF: Form */}
+              {/* Right: form + actions */}
               <div className="flex flex-col bg-white overflow-y-auto">
-                
                 {/* Action Bar */}
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2.5 bg-slate-50">
-                  {extracting ? (
-                    <div className="flex-1 py-2 px-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                      Auto-Extracting data with Base64.ai...
-                    </div>
-                  ) : (
+                {viewMode === 'trash' ? (
+                  <div className="p-4 border-b border-slate-200 flex items-center justify-end gap-2.5 bg-slate-50">
                     <button
-                      onClick={() => handleAIExtract()}
-                      className="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
+                      onClick={() => handleRestoreSingle(selectedInvoice.id)}
+                      disabled={deleting}
+                      className="py-2 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-50"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                      Re-run AI Extraction
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Undo Delete
                     </button>
-                  )}
 
-                  {/* Soft Delete in Modal */}
-                  <button
-                    onClick={() => handleSoftDeleteSingle(selectedInvoice.id)}
-                    disabled={deleting}
-                    className="py-2 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition disabled:opacity-50"
-                    title="Move to Trash"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Trash
-                  </button>
+                    <button
+                      onClick={() => handlePermanentDeleteSingle(selectedInvoice.id)}
+                      disabled={deleting}
+                      className="py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2.5 bg-slate-50">
+                    {extracting ? (
+                      <div className="flex-1 py-2 px-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                        Auto-Extracting data with Base64.ai...
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleAIExtract()}
+                        className="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                        Re-run AI Extraction
+                      </button>
+                    )}
 
-                  <button
-                    onClick={handleApproveInvoice}
-                    disabled={saving}
-                    className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    {saving ? 'Saving...' : 'Approve'}
-                  </button>
-                </div>
+                    {/* Soft Delete in Modal */}
+                    <button
+                      onClick={() => handleSoftDeleteSingle(selectedInvoice.id)}
+                      disabled={deleting}
+                      className="py-2 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+
+                    <button
+                      onClick={handleApproveInvoice}
+                      disabled={saving}
+                      className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {saving ? 'Saving...' : 'Approve'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Form Fields */}
 <div className="p-6 space-y-4 flex-1">
