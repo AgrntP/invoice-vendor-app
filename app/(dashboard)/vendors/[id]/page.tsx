@@ -223,6 +223,7 @@ type FormData = {
   invoice_number: string;
   invoice_date: string;
   due_date: string;
+  currency: string;
   subtotal: number;
   tax: number;
   total: number;
@@ -234,6 +235,7 @@ function formDataFromInvoice(inv: Invoice): FormData {
     invoice_number: inv.invoice_number || '',
     invoice_date: inv.invoice_date || '',
     due_date: inv.due_date || '',
+    currency: (inv.currency || 'usd').toLowerCase(),
     subtotal: inv.subtotal || 0,
     tax: inv.tax || 0,
     total: inv.total || 0,
@@ -246,6 +248,7 @@ function formDataEqual(a: FormData, b: FormData): boolean {
     a.invoice_number === b.invoice_number &&
     a.invoice_date === b.invoice_date &&
     a.due_date === b.due_date &&
+    a.currency === b.currency &&
     Number(a.subtotal) === Number(b.subtotal) &&
     Number(a.tax) === Number(b.tax) &&
     Number(a.total) === Number(b.total) &&
@@ -278,6 +281,7 @@ export default function VendorDashboardPage() {
     invoice_number: '',
     invoice_date: '',
     due_date: '',
+    currency: 'usd',
     subtotal: 0,
     tax: 0,
     total: 0,
@@ -381,13 +385,18 @@ export default function VendorDashboardPage() {
   async function handleSaveInvoice() {
     if (!selectedInvoice || !isDirty) return;
     setSaving(true);
+    const subtotalNum = isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal);
+    const taxNum = isNaN(Number(formData.tax)) ? 0 : Number(formData.tax);
+    const totalNum = Math.round((subtotalNum + taxNum) * 100) / 100;
+
     const payload = {
       invoice_number: formData.invoice_number || null,
       invoice_date: formData.invoice_date || null,
       due_date: formData.due_date || null,
-      subtotal: isNaN(Number(formData.subtotal)) ? 0 : Number(formData.subtotal),
-      tax: isNaN(Number(formData.tax)) ? 0 : Number(formData.tax),
-      total: isNaN(Number(formData.total)) ? 0 : Number(formData.total),
+      currency: formData.currency || 'usd',
+      subtotal: subtotalNum,
+      tax: taxNum,
+      total: totalNum,
       description: formData.description || null,
     };
     const { data, error } = await supabase
@@ -1101,12 +1110,28 @@ export default function VendorDashboardPage() {
 
                   <div className="bg-slate-50 border border-slate-300/80 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-semibold">Currency</span>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        className="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-600 cursor-pointer"
+                      >
+                        <option value="usd">USD ($)</option>
+                        <option value="vnd">VND (₫)</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-600">Subtotal</span>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.subtotal}
-                        onChange={(e) => setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const taxVal = formData.tax || 0;
+                          const tot = Math.round((val + taxVal) * 100) / 100;
+                          setFormData({ ...formData, subtotal: val, total: tot });
+                        }}
                         className="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs"
                       />
                     </div>
@@ -1116,7 +1141,12 @@ export default function VendorDashboardPage() {
                         type="number"
                         step="0.01"
                         value={formData.tax}
-                        onChange={(e) => setFormData({ ...formData, tax: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const subVal = formData.subtotal || 0;
+                          const tot = Math.round((subVal + val) * 100) / 100;
+                          setFormData({ ...formData, tax: val, total: tot });
+                        }}
                         className="w-28 text-right bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs"
                       />
                     </div>
@@ -1126,7 +1156,12 @@ export default function VendorDashboardPage() {
                         type="number"
                         step="0.01"
                         value={formData.total}
-                        onChange={(e) => setFormData({ ...formData, total: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const taxVal = formData.tax || 0;
+                          const sub = Math.max(0, Math.round((val - taxVal) * 100) / 100);
+                          setFormData({ ...formData, total: val, subtotal: sub });
+                        }}
                         className="w-28 text-right bg-white border border-indigo-500 rounded-lg px-2 py-1 text-xs font-bold text-indigo-700"
                       />
                     </div>

@@ -3,18 +3,23 @@ import { twMerge } from "tailwind-merge";
 
 /**
  * cn() - Kết hợp clsx + tailwind-merge
- * Cho phép merge Tailwind classes thông minh, tránh conflict
- * Ví dụ: cn("px-4 py-2", conditional && "bg-green-500", "px-6") => "py-2 px-6 bg-green-500"
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Format số tiền theo USD currency
- * Ví dụ: formatCurrency(1234.5) => "$1,234.50"
+ * Format số tiền theo VND hoặc USD currency
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency: string = "USD"): string {
+  const currUpper = (currency || "USD").toUpperCase();
+  if (currUpper === "VND") {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -25,7 +30,6 @@ export function formatCurrency(amount: number): string {
 
 /**
  * Format ngày tháng theo dạng "MMM dd, yyyy"
- * Ví dụ: formatDate("2024-01-15") => "Jan 15, 2024"
  */
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);

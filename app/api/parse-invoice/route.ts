@@ -137,6 +137,16 @@ export async function POST(request: Request) {
       }
     }
 
+    let finalSubtotal = subtotal ?? 0;
+    let finalTax = tax ?? 0;
+    let finalTotal = total ?? 0;
+
+    if (finalTotal > 0 && finalSubtotal === 0 && finalTax === 0) {
+      finalSubtotal = finalTotal;
+    } else {
+      finalTotal = Math.round((finalSubtotal + finalTax) * 100) / 100;
+    }
+
     // 8. Payload for `invoices` table (Uses vendor_id ONLY)
     const updatedInvoiceData = {
       status: 'pending_review' as const,
@@ -145,9 +155,9 @@ export async function POST(request: Request) {
       invoice_date: invoiceDate,
       due_date: dueDate,
       currency: currency,
-      subtotal: subtotal,
-      tax: tax,
-      total: total,
+      subtotal: finalSubtotal,
+      tax: finalTax,
+      total: finalTotal,
       description: description
     };
 
