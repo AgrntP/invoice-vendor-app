@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import {
   ArrowUp, ArrowDown, Building2, Plus, X, CreditCard,
-  Landmark, User, Loader2, ChevronRight, DollarSign,
+  Landmark, User, Loader2, ChevronRight, DollarSign, Filter, Search,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -18,6 +18,7 @@ interface Vendor {
   id: string;
   name: string;
   email?: string;
+  currency?: string | null;
   created_at: string;
   bank_name?: string | null;
   bank_number?: string | null;
@@ -186,14 +187,41 @@ export default function VendorExplorerList() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const sortedVendors = useMemo(() => {
-    return [...vendors].sort((a, b) => {
-      const comparison = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-  }, [vendors, sortOrder]);
+  // Filter & Sort States
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [amountDueFilter, setAmountDueFilter] = useState<string>('all');
+  const [amountSortOrder, setAmountSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
 
-  const toggleSortOrder = () => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  const filteredAndSortedVendors = useMemo(() => {
+    return vendors
+      .filter((v) => {
+        // Currency filter
+        if (currencyFilter !== 'all') {
+          const vCurr = (v.currency || '').toUpperCase();
+          if (currencyFilter === 'empty' && vCurr !== '') return false;
+          if (currencyFilter === 'VND' && vCurr !== 'VND') return false;
+          if (currencyFilter === 'USD' && vCurr !== 'USD') return false;
+        }
+
+        // Amount due filter
+        if (amountDueFilter === 'has_due' && v.amountDue <= 0) return false;
+        if (amountDueFilter === 'no_due' && v.amountDue > 0) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (amountSortOrder !== 'none') {
+          return amountSortOrder === 'asc' ? a.amountDue - b.amountDue : b.amountDue - a.amountDue;
+        }
+        const comparison = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+  }, [vendors, currencyFilter, amountDueFilter, sortOrder, amountSortOrder]);
+
+  const toggleSortOrder = () => {
+    setAmountSortOrder('none');
+    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  };
 
   async function loadVendors() {
     setLoading(true);
@@ -206,24 +234,31 @@ export default function VendorExplorerList() {
 
     if (!vendorData) { setLoading(false); return; }
 
-    // Fetch all unpaid invoice totals in one query
+    // Fetch all active invoices for these vendors to compute balance & detect currency
     const vendorIds = vendorData.map((v) => v.id);
     const { data: invoiceData } = await supabase
       .from('invoices')
-      .select('vendor_id, total')
+      .select('vendor_id, total, currency, status')
       .in('vendor_id', vendorIds)
-      .eq('status', 'unpaid')
       .is('deleted_at', null);
 
-    // Sum unpaid totals per vendor
+    // Maps per vendor
     const balanceMap: Record<string, number> = {};
+    const currencyMap: Record<string, string> = {};
+
     (invoiceData || []).forEach((inv) => {
-      balanceMap[inv.vendor_id] = (balanceMap[inv.vendor_id] || 0) + (inv.total || 0);
+      if (inv.status === 'unpaid') {
+        balanceMap[inv.vendor_id] = (balanceMap[inv.vendor_id] || 0) + (inv.total || 0);
+      }
+      if (inv.currency && !currencyMap[inv.vendor_id]) {
+        currencyMap[inv.vendor_id] = String(inv.currency).toUpperCase();
+      }
     });
 
     const enriched: VendorWithBalance[] = vendorData.map((v) => ({
       ...v,
       amountDue: balanceMap[v.id] || 0,
+      currency: currencyMap[v.id] || v.currency || null,
     }));
     setVendors(enriched);
     setLoading(false);
@@ -237,7 +272,7 @@ export default function VendorExplorerList() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3 font-sans">
+    <div className="w-full max-w-4xl mx-auto space-y-4 font-sans">
 
       {/* Toolbar */}
       <div className="flex items-center justify-between">
@@ -252,19 +287,86 @@ export default function VendorExplorerList() {
         </button>
       </div>
 
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Vendor Name Sort Dropdown (Ascending / Descending) */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500 font-medium">Vendor Name:</span>
+            <select
+              value={sortOrder}
+              onChange={(e) => {
+                setAmountSortOrder('none');
+                setSortOrder(e.target.value as SortOrder);
+              }}
+              className="bg-gray-50 border border-gray-200 text-gray-800 rounded-xl px-3 py-1.5 font-medium focus:outline-none focus:border-bill-green transition cursor-pointer"
+            >
+              <option value="asc">Ascending (A-Z)</option>
+              <option value="desc">Descending (Z-A)</option>
+            </select>
+          </div>
+
+          {/* Currency Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500 font-medium">Currency:</span>
+            <select
+              value={currencyFilter}
+              onChange={(e) => setCurrencyFilter(e.target.value)}
+              className="bg-gray-50 border border-gray-200 text-gray-800 rounded-xl px-3 py-1.5 font-medium focus:outline-none focus:border-bill-green transition cursor-pointer"
+            >
+              <option value="all">All Currencies</option>
+              <option value="USD">USD</option>
+              <option value="VND">VND</option>
+              <option value="empty">Empty (—)</option>
+            </select>
+          </div>
+
+          {/* Amount Due Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500 font-medium">Amount Due:</span>
+            <select
+              value={amountDueFilter}
+              onChange={(e) => setAmountDueFilter(e.target.value)}
+              className="bg-gray-50 border border-gray-200 text-gray-800 rounded-xl px-3 py-1.5 font-medium focus:outline-none focus:border-bill-green transition cursor-pointer"
+            >
+              <option value="all">All Amounts</option>
+              <option value="has_due">Has Unpaid Balance (&gt; 0)</option>
+              <option value="no_due">No Unpaid Balance (= 0)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Reset Filters button */}
+        {(currencyFilter !== 'all' || amountDueFilter !== 'all' || amountSortOrder !== 'none' || sortOrder !== 'asc') && (
+          <button
+            onClick={() => {
+              setSortOrder('asc');
+              setCurrencyFilter('all');
+              setAmountDueFilter('all');
+              setAmountSortOrder('none');
+            }}
+            className="text-bill-green hover:text-bill-green-dark font-semibold hover:underline cursor-pointer shrink-0"
+          >
+            Reset Filters
+          </button>
+        )}
+      </div>
+
       {/* Header row */}
       <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+        <div className="col-span-6 text-left">Vendor Name</div>
+        <div className="col-span-3 text-center">Currency</div>
         <button
-          onClick={toggleSortOrder}
-          className="col-span-6 flex items-center gap-1.5 hover:text-gray-900 transition-colors focus:outline-none group text-left"
+          onClick={() => {
+            setAmountSortOrder((prev) => (prev === 'asc' ? 'desc' : prev === 'desc' ? 'none' : 'asc'));
+          }}
+          className="col-span-3 text-right flex items-center justify-end gap-1.5 hover:text-gray-900 transition-colors focus:outline-none group cursor-pointer"
         >
-          <span>Vendor Name</span>
+          <span>Amount Due</span>
           <span className="text-gray-400 group-hover:text-gray-700">
-            {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            {amountSortOrder === 'asc' ? <ArrowUp size={14} /> : amountSortOrder === 'desc' ? <ArrowDown size={14} /> : null}
           </span>
         </button>
-        <div className="col-span-3 text-center">Currency</div>
-        <div className="col-span-3 text-right">Amount Due</div>
       </div>
 
       {/* List */}
@@ -272,20 +374,34 @@ export default function VendorExplorerList() {
         <div className="py-8 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading vendors...
         </div>
-      ) : sortedVendors.length === 0 ? (
+      ) : filteredAndSortedVendors.length === 0 ? (
         <div className="py-12 text-center">
           <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No vendors yet.</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="mt-3 text-sm text-bill-green font-semibold hover:underline cursor-pointer"
-          >
-            Add your first vendor →
-          </button>
+          <p className="text-sm text-gray-500">No matching vendors found.</p>
+          {(currencyFilter !== 'all' || amountDueFilter !== 'all') ? (
+            <button
+              onClick={() => {
+                setSortOrder('asc');
+                setCurrencyFilter('all');
+                setAmountDueFilter('all');
+                setAmountSortOrder('none');
+              }}
+              className="mt-3 text-sm text-bill-green font-semibold hover:underline cursor-pointer"
+            >
+              Reset Filters →
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="mt-3 text-sm text-bill-green font-semibold hover:underline cursor-pointer"
+            >
+              Add your first vendor →
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-1">
-          {sortedVendors.map((vendor) => (
+          {filteredAndSortedVendors.map((vendor) => (
             <Link
               key={vendor.id}
               href={`/vendors/${vendor.id}`}
@@ -302,19 +418,25 @@ export default function VendorExplorerList() {
                 <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
 
-              {/* Currency */}
+              {/* Currency — empty by default, populated when invoices have currency */}
               <div className="col-span-3 flex items-center justify-center">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-semibold">
-                  <DollarSign className="w-3 h-3" />
-                  USD
-                </span>
+                {vendor.currency ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-semibold uppercase">
+                    {vendor.currency.toUpperCase() === 'USD' && <DollarSign className="w-3 h-3 text-slate-500" />}
+                    {vendor.currency.toUpperCase()}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-xs font-medium">—</span>
+                )}
               </div>
 
               {/* Amount Due */}
               <div className="col-span-3 text-right">
                 <span className={`text-sm font-bold ${vendor.amountDue > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
                   {vendor.amountDue > 0
-                    ? `$${vendor.amountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    ? vendor.currency?.toUpperCase() === 'VND'
+                      ? `₫${vendor.amountDue.toLocaleString('vi-VN')}`
+                      : `$${vendor.amountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : '—'
                   }
                 </span>

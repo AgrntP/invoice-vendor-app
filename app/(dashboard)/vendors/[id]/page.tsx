@@ -19,6 +19,10 @@ import {
   User,
   RotateCcw,
   Sparkles,
+  DollarSign,
+  CalendarCheck,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 
@@ -32,6 +36,7 @@ const BANK_OPTIONS = ['MBBank', 'Vietcombank', 'VietinBank', 'HDBank', 'BIDV'] a
 interface Vendor {
   id: string;
   name: string;
+  currency?: string | null;
   bank_name?: string | null;
   bank_number?: string | null;
 }
@@ -546,7 +551,9 @@ export default function VendorDashboardPage() {
   // ─── Derived data ──────────────────────────────────────────
   const unpaidInvoices = invoices.filter((inv) => inv.status === 'unpaid');
   const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
+  const pendingInvoices = invoices.filter((inv) => inv.status === 'pending_review');
   const dueBalance = unpaidInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  const paidTotal = paidInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
   const activeList = activeTab === 'unpaid' ? unpaidInvoices : paidInvoices;
   const activeSelectedIds = [...selectedIds].filter((id) =>
     activeList.some((inv) => inv.id === id)
@@ -630,20 +637,94 @@ export default function VendorDashboardPage() {
           </div>
         </div>
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 shadow-sm">
-            <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider block">Due Balance</span>
-            <span className="text-xl font-bold text-amber-900 mt-1 block">${dueBalance.toFixed(2)}</span>
+        {/* 4 KPI Dashboard Cards (Matching Payables Financial System) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          
+          {/* 1. Total Unpaid */}
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-rose-600 transition-transform duration-200 group-hover:scale-110">
+                <DollarSign className="h-5.5 w-5.5" />
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">
+                <TrendingUp className="h-3 w-3" />
+                +12.5%
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
+                {vendor.currency?.toUpperCase() === 'VND'
+                  ? `₫${dueBalance.toLocaleString('vi-VN')}`
+                  : `$${dueBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                }
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Total Unpaid</p>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">vs last month</p>
           </div>
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-sm">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Unpaid Bills</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{unpaidInvoices.length}</span>
+
+          {/* 2. Pending Approval */}
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition-transform duration-200 group-hover:scale-110">
+                <Clock className="h-5.5 w-5.5" />
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                invoices
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
+                {pendingInvoices.length}
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Pending Approval</p>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">invoices waiting review</p>
           </div>
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-sm">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Paid Bills</span>
-            <span className="text-xl font-bold text-emerald-700 mt-1 block">{paidInvoices.length}</span>
+
+          {/* 3. Scheduled Payments */}
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-200 group-hover:scale-110">
+                <CalendarCheck className="h-5.5 w-5.5" />
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                <TrendingUp className="h-3 w-3" />
+                +{unpaidInvoices.length}
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
+                {unpaidInvoices.length}
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Scheduled Payments</p>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">upcoming unpaid bills</p>
           </div>
+
+          {/* 4. Paid Total */}
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-200 group-hover:scale-110">
+                <CheckCircle className="h-5.5 w-5.5" />
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">
+                <TrendingUp className="h-3 w-3" />
+                +8.3%
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-2xl font-bold tracking-tight text-emerald-700">
+                {vendor.currency?.toUpperCase() === 'VND'
+                  ? `₫${paidTotal.toLocaleString('vi-VN')}`
+                  : `$${paidTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                }
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Paid Total ({paidInvoices.length})</p>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">vs last month</p>
+          </div>
+
         </div>
 
         {/* Invoice table card */}

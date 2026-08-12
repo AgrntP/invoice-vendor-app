@@ -21,29 +21,14 @@ import {
  */
 const navItems = [
   {
-    label: "Dashboard",
+    label: "Inbox",
     icon: LayoutDashboard,
     href: "/dashboard",
-  },
-  {
-    label: "Payables",
-    icon: FileText,
-    href: "/payables",
-  },
-  {
-    label: "Receivables",
-    icon: ArrowDownToLine,
-    href: "/receivables",
   },
   {
     label: "Documents",
     icon: FolderOpen,
     href: "/documents",
-  },
-  {
-    label: "Settings",
-    icon: Settings,
-    href: "/settings",
   },
   {
     label: "Vendors",
