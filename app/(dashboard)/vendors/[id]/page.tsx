@@ -476,13 +476,25 @@ export default function VendorDashboardPage() {
   // Navigate to checkout with selected invoice IDs
   const handlePayNow = useCallback(
     (ids: string[]) => {
+      // Find the selected invoices to check their currency (or default to 'usd')
+      const selectedInvoicesList = invoices.filter(inv => ids.includes(inv.id));
+      
+      // Determine currency: if any invoice/vendor uses 'vnd', route to VietQR, otherwise Stripe
+      // You can also check a vendor currency column if you have one: vendor?.currency
+      const currency = (vendor as any)?.currency || selectedInvoicesList[0]?.currency || 'usd';
+
       const query = new URLSearchParams({
         ids: ids.join(','),
         vendorId,
       });
-      router.push(`/payables/checkout?${query.toString()}`);
+
+      if (currency.toLowerCase() === 'vnd') {
+        router.push(`/payables/qr?${query.toString()}`);
+      } else {
+        router.push(`/payables/checkout?${query.toString()}`);
+      }
     },
-    [router, vendorId]
+    [router, vendorId, invoices, vendor]
   );
 
   // ─── Checkbox helpers ──────────────────────────────────────
@@ -644,7 +656,7 @@ export default function VendorDashboardPage() {
         </div>
 
         {/* 4 KPI Dashboard Cards (Matching Payables Financial System) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {unpaidInvoices.length + paidInvoices.length > 0 && (<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           
           {/* 1. Total Unpaid */}
           <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
@@ -659,10 +671,11 @@ export default function VendorDashboardPage() {
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold tracking-tight text-slate-900">
-                {vendor.currency?.toUpperCase() === 'VND'
-                  ? `₫${dueBalance.toLocaleString('vi-VN')}`
-                  : `$${dueBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                }
+                
+                 {(paidInvoices[0]?.currency || unpaidInvoices[0]?.currency)?.toUpperCase() === 'VND'
+    ? `${dueBalance.toLocaleString('vi-VN')} ₫`
+    : `$${dueBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
               </p>
               <p className="mt-1 text-sm font-medium text-slate-500">Total Unpaid</p>
             </div>
@@ -721,18 +734,17 @@ export default function VendorDashboardPage() {
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold tracking-tight text-emerald-700">
-                {vendor.currency?.toUpperCase() === 'VND'
-                  ? `₫${paidTotal.toLocaleString('vi-VN')}`
-                  : `$${paidTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                }
-              </p>
+  {(paidInvoices[0]?.currency || unpaidInvoices[0]?.currency)?.toUpperCase() === 'VND'
+    ? `${paidTotal.toLocaleString('vi-VN')} ₫`
+    : `$${paidTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+</p>
               <p className="mt-1 text-sm font-medium text-slate-500">Paid Total ({paidInvoices.length})</p>
             </div>
             <p className="mt-2 text-xs text-slate-400">vs last month</p>
           </div>
 
-        </div>
-
+        </div>)}
         {/* Invoice table card */}
         <div className="bg-white border border-slate-300 rounded-2xl shadow-sm overflow-hidden">
           {/* Tab bar */}
@@ -819,8 +831,10 @@ export default function VendorDashboardPage() {
                           <td className="p-3.5 text-slate-600">{inv.invoice_date || '-'}</td>
                           <td className="p-3.5 text-slate-600">{inv.due_date || '-'}</td>
                           <td className="p-3.5 text-right font-bold text-slate-900">
-                            ${(inv.total || 0).toFixed(2)}
-                          </td>
+  {inv.currency?.toLowerCase() === 'vnd'
+    ? `${(inv.total || 0).toLocaleString('vi-VN')} ₫`
+    : `$${(inv.total || 0).toFixed(2)}`}
+</td>
                         </tr>
                       ))}
                     </tbody>
