@@ -8,9 +8,7 @@ if (!stripeSecretKey) {
   console.error("❌ MISSING STRIPE_SECRET_KEY in environment variables!");
 }
 
-const stripe = new Stripe(stripeSecretKey || "", {
-  apiVersion: "2026-07-29.dahlia",
-});
+const stripe = new Stripe(stripeSecretKey || "");
 
 export async function POST(request: Request) {
   try {

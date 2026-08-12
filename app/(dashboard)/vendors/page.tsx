@@ -12,12 +12,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
+export const BANK_OPTIONS = ['MBBank', 'Vietcombank', 'VietinBank', 'HDBank', 'BIDV'] as const;
+
 interface Vendor {
   id: string;
   name: string;
   email?: string;
   created_at: string;
-  bank_identifier?: string | null;
+  bank_name?: string | null;
   bank_number?: string | null;
 }
 
@@ -38,7 +40,7 @@ function CreateVendorModal({
   const [form, setForm] = useState({
     name: '',
     email: '',
-    bank_identifier: '',
+    bank_name: '',
     bank_number: '',
   });
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,7 @@ function CreateVendorModal({
     const payload = {
       name: form.name.trim(),
       email: form.email.trim() || null,
-      bank_identifier: form.bank_identifier.trim() || null,
+      bank_name: form.bank_name.trim() || null,
       bank_number: form.bank_number.trim() || null,
     };
 
@@ -133,13 +135,18 @@ function CreateVendorModal({
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
               <div className="space-y-3">
-                <input
-                  type="text"
-                  value={form.bank_identifier}
-                  onChange={(e) => setForm({ ...form, bank_identifier: e.target.value })}
-                  placeholder="Bank name (e.g. Vietcombank)"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition"
-                />
+                <select
+                  value={form.bank_name}
+                  onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition cursor-pointer"
+                >
+                  <option value="">-- Select Bank --</option>
+                  {BANK_OPTIONS.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   value={form.bank_number}

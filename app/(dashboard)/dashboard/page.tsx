@@ -314,7 +314,7 @@ async function handleSoftDeleteSingle(id: string) {
     setDeleting(true);
     const { error } = await supabase
       .from('invoices')
-      .update({ deleted_at: null })
+      .update({ deleted_at: null, status: 'pending_review' })
       .in('id', selectedIds);
 
     if (!error) {
@@ -351,7 +351,7 @@ async function handleSoftDeleteSingle(id: string) {
     setDeleting(true);
     const { error } = await supabase
       .from('invoices')
-      .update({ deleted_at: null })
+      .update({ deleted_at: null, status: 'pending_review' })
       .eq('id', id);
 
     if (!error) {

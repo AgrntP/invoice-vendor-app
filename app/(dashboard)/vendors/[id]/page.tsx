@@ -18,6 +18,7 @@ import {
   Landmark,
   User,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 
@@ -26,10 +27,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
+const BANK_OPTIONS = ['MBBank', 'Vietcombank', 'VietinBank', 'HDBank', 'BIDV'] as const;
+
 interface Vendor {
   id: string;
   name: string;
-  bank_identifier?: string | null;
+  bank_name?: string | null;
   bank_number?: string | null;
 }
 
@@ -45,7 +48,7 @@ function PaymentDetailsCard({
 }) {
   const [form, setForm] = useState({
     name: vendor.name || '',
-    bank_identifier: vendor.bank_identifier || '',
+    bank_name: vendor.bank_name || '',
     bank_number: vendor.bank_number || '',
   });
   const [saving, setSaving] = useState(false);
@@ -54,7 +57,7 @@ function PaymentDetailsCard({
   // Compare against actual values currently saved in the database
   const isDirty =
     form.name.trim() !== (vendor.name || '').trim() ||
-    form.bank_identifier.trim() !== (vendor.bank_identifier || '').trim() ||
+    form.bank_name.trim() !== (vendor.bank_name || '').trim() ||
     form.bank_number.trim() !== (vendor.bank_number || '').trim();
 
   async function handleSave() {
@@ -64,7 +67,7 @@ function PaymentDetailsCard({
         .from('vendors')
         .update({
           name: form.name.trim(),
-          bank_identifier: form.bank_identifier.trim() || null,
+          bank_name: form.bank_name.trim() || null,
           bank_number: form.bank_number.trim() || null,
         })
         .eq('id', vendor.id)
@@ -80,7 +83,7 @@ function PaymentDetailsCard({
       if (data) {
         onSaved(data);
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        window.location.reload();
       }
     } catch (err: unknown) {
       setSaving(false);
@@ -136,13 +139,18 @@ function PaymentDetailsCard({
               <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Landmark className="w-3 h-3" /> Bank Name
               </label>
-              <input
-                type="text"
-                value={form.bank_identifier}
-                onChange={(e) => setForm({ ...form, bank_identifier: e.target.value })}
-                placeholder="e.g. Vietcombank"
-                className={inputCls}
-              />
+              <select
+                value={form.bank_name}
+                onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-bill-green focus:ring-2 focus:ring-bill-green/20 focus:bg-white transition cursor-pointer"
+              >
+                <option value="">-- Select Bank --</option>
+                {BANK_OPTIONS.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -279,6 +287,23 @@ export default function VendorDashboardPage() {
     return !formDataEqual(formData, originalFormData);
   }, [formData, originalFormData]);
 
+  const [showToast, setShowToast] = useState(false);
+
+  // Check for paid complete toast query parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('toast') === 'paid_complete' || urlParams.get('status') === 'success') {
+        setShowToast(true);
+        setActiveTab('unpaid');
+        const timer = setTimeout(() => {
+          setShowToast(false);
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
   // ─── Data loading ───────────────────────────────────────────
   useEffect(() => {
     if (vendorId) loadVendorData();
@@ -372,6 +397,7 @@ export default function VendorDashboardPage() {
       setSelectedInvoice(data);
       setOriginalFormData(formDataFromInvoice(data));
       setInvoices((prev) => prev.map((inv) => (inv.id === data.id ? data : inv)));
+      window.location.reload();
     }
     setSaving(false);
   }
@@ -392,10 +418,10 @@ export default function VendorDashboardPage() {
   }
 
   async function handleMoveToInbox(invoiceId: string) {
-    if (!confirm('Move this bill back to the inbox and reset status to unprocessed?')) return;
+    if (!confirm('Move this bill back to the inbox?')) return;
     const { error } = await supabase
       .from('invoices')
-      .update({ status: 'unprocessed', deleted_at: null, vendor_id: null })
+      .update({ status: 'pending_review', deleted_at: null, vendor_id: null })
       .eq('id', invoiceId);
     if (error) {
       alert(`Error moving to inbox: ${error.message}`);
@@ -475,6 +501,48 @@ export default function VendorDashboardPage() {
     }
   };
 
+  const [deletingVendor, setDeletingVendor] = useState(false);
+
+  async function handleDeleteVendor() {
+    if (!vendor) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete vendor "${vendor.name}"? All associated bills will be moved back to Inbox as "pending_review".`
+      )
+    )
+      return;
+
+    setDeletingVendor(true);
+    try {
+      // 1. Move all invoices for this vendor back to Inbox with pending_review status
+      await supabase
+        .from('invoices')
+        .update({
+          vendor_id: null,
+          status: 'pending_review',
+          deleted_at: null,
+        })
+        .eq('vendor_id', vendor.id);
+
+      // 2. Delete the vendor
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', vendor.id);
+
+      if (error) {
+        alert(`Failed to delete vendor: ${error.message}`);
+        setDeletingVendor(false);
+      } else {
+        router.push('/vendors');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Error deleting vendor: ${errMsg}`);
+      setDeletingVendor(false);
+    }
+  }
+
   // ─── Derived data ──────────────────────────────────────────
   const unpaidInvoices = invoices.filter((inv) => inv.status === 'unpaid');
   const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
@@ -534,19 +602,31 @@ export default function VendorDashboardPage() {
                 <p className="text-xs text-slate-500">Supplier Financial &amp; Bills Control Dashboard</p>
               </div>
             </div>
-            {/* Payment Info button — same row as vendor name */}
-            <button
-              id="vendor-payment-info-btn"
-              onClick={() => setShowPaymentInfo(true)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
-                vendor.bank_identifier || vendor.bank_number
-                  ? 'bg-bill-green-light text-bill-green hover:bg-bill-green/20 border border-bill-green/25'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              Payment Info
-            </button>
+            {/* Header Action Buttons — Payment Info & Delete Vendor */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                id="vendor-payment-info-btn"
+                onClick={() => setShowPaymentInfo(true)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
+                  vendor.bank_name || vendor.bank_number
+                    ? 'bg-bill-green-light text-bill-green hover:bg-bill-green/20 border border-bill-green/25'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Payment Info
+              </button>
+
+              <button
+                onClick={handleDeleteVendor}
+                disabled={deletingVendor}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl transition cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
+                title="Delete Vendor"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deletingVendor ? 'Deleting...' : 'Delete Vendor'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1005,6 +1085,27 @@ export default function VendorDashboardPage() {
           onSaved={(updated) => setVendor(updated)}
         />
       )}
+
+      {/* Sliding Large Colorful Toast Notification — Bottom Right */}
+      <div
+        className={`fixed bottom-8 right-8 z-50 flex items-center gap-4 px-6 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white rounded-3xl shadow-[0_15px_45px_rgba(16,185,129,0.55)] border-2 border-emerald-300/50 backdrop-blur-xl transition-all duration-700 cubic-bezier(0.34,1.56,0.64,1) transform ${
+          showToast
+            ? 'translate-x-0 scale-100 opacity-100'
+            : 'translate-x-full scale-90 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md shadow-inner shrink-0 ring-2 ring-white/40 animate-pulse">
+          <CheckCircle className="w-7 h-7 text-white drop-shadow-lg" />
+        </div>
+        <div className="flex flex-col pr-1">
+          <span className="text-base font-black tracking-widest uppercase text-white drop-shadow-md">
+            Paid Complete
+          </span>
+          <span className="text-xs font-semibold text-emerald-100/90">
+            Payment confirmed &amp; updated successfully!
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
